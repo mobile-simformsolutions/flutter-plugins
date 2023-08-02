@@ -3,10 +3,29 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 
 import 'src/channels.dart';
+import 'src/screen.dart';
 import 'src/window_controller.dart';
 import 'src/window_controller_impl.dart';
 
 export 'src/window_controller.dart';
+
+// Keys for screen and window maps returned by _getScreenListMethod.
+
+/// The frame of a screen or window. The value is a list of four doubles:
+///   [left, top, width, height]
+const String _frameKey = 'frame';
+
+/// The frame of a screen available for use by applications. The value format
+/// is the same as _frameKey's.
+///
+/// Only used for screens.
+const String _visibleFrameKey = 'visibleFrame';
+
+/// The scale factor for a screen or window, as a double.
+///
+/// This is the number of pixels per screen coordinate, and thus the ratio
+/// between sizes as seen by Flutter and sizes in native screen coordinates.
+const String _scaleFactorKey = 'scaleFactor';
 
 class DesktopMultiWindow {
   /// Create a new Window.
@@ -35,6 +54,9 @@ class DesktopMultiWindow {
     assert(windowId! > 0, 'id must be greater than 0');
     return WindowControllerMainImpl(windowId!);
   }
+
+  static Future<void> quit() async =>
+      multiWindowChannel.invokeMethod('destroy');
 
   /// Invoke method on the isolate of the window.
   ///
@@ -66,7 +88,7 @@ class DesktopMultiWindow {
       final fromWindowId = call.arguments['fromWindowId'] as int;
       final arguments = call.arguments['arguments'];
       final result =
-          await handler(MethodCall(call.method, arguments), fromWindowId);
+      await handler(MethodCall(call.method, arguments), fromWindowId);
       return result;
     });
   }
@@ -79,5 +101,38 @@ class DesktopMultiWindow {
     assert(!ids.contains(0), 'ids must not contains main window id');
     assert(ids.every((id) => id > 0), 'id must be greater than 0');
     return ids;
+  }
+
+  /// Returns the list of physical screens attached to the system.
+  static Future<List<Screen>> getAttachedScreenList() async {
+    final screenList = <Screen>[];
+    final response =
+    (await multiWindowChannel.invokeMethod('getAttachedScreenList') as List? ??
+        [])
+        .cast<Map<dynamic, dynamic>>();
+
+    for (final screenInfo in response) {
+      screenList.add(_screenFromInfoMap(screenInfo));
+    }
+    return screenList;
+  }
+
+  /// Given a map of information about a screen, return the corresponding
+  /// [Screen] object.
+  ///
+  /// Used for screen deserialization in the platform channel.
+  static Screen _screenFromInfoMap(Map<dynamic, dynamic> map) {
+    return Screen(
+        _rectFromLTWHList((map[_frameKey] as List).cast<double>()),
+        _rectFromLTWHList((map[_visibleFrameKey] as List).cast<double>()),
+        double.tryParse(map[_scaleFactorKey].toString()) ?? 1);
+  }
+
+  /// Given an array of the form [left, top, width, height], return the
+  /// corresponding [Rect].
+  ///
+  /// Used for frame deserialization in the platform channel.
+  static Rect _rectFromLTWHList(List<double> ltwh) {
+    return Rect.fromLTWH(ltwh[0], ltwh[1], ltwh[2], ltwh[3]);
   }
 }

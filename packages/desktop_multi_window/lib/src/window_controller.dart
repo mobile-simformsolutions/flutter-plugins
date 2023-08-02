@@ -18,7 +18,7 @@ abstract class WindowController {
   /// 0 means the main window.
   int get windowId;
 
-  /// Close the window.
+  /// Try to close the window.
   Future<void> close();
 
   /// Show the window.
@@ -36,13 +36,27 @@ abstract class WindowController {
   /// Set the window's title.
   Future<void> setTitle(String title);
 
-  /// Whether the window can be resized. Available only on macOS.
-  ///
-  /// Most useful for ensuring windows *cannot* be resized. Windows are
-  /// resizable by default, so there is no need to explicitly define a window
-  /// as resizable by calling this function.
-  Future<void> resizable(bool resizable);
-
   /// Available only on macOS.
   Future<void> setFrameAutosaveName(String name);
+
+  /// Necessary to be called before using any screen related functions.
+  Future<void> ensureScreenInitialized();
+
+  /// Wait until ready to show.
+  Future<void> waitUntilReadyToShow();
+
+  /// Sets whether the window should be in fullscreen mode.
+  Future<void> setFullScreen(bool isFullScreen);
+
+  /// Sets whether the window should show always on top of other windows.
+  Future<void> setAlwaysOnTop(bool isAlwaysOnTop);
+
+  /// Makes the window not show in the taskbar / dock.
+  Future<void> setSkipTaskbar(bool isSkipTaskbar);
+
+  /// Sets whether the window can be manually resized by the user.
+  Future<void> setResizable(bool isResizable);
+
+  /// Sets whether the window can be manually closed by user.
+  Future<void> setClosable(bool isClosable);
 }

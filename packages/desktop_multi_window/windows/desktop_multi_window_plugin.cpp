@@ -9,6 +9,7 @@
 #include <memory>
 
 #include "multi_window_manager.h"
+#include "screen_manager.cpp"
 
 namespace {
 
@@ -21,10 +22,13 @@ class DesktopMultiWindowPlugin : public flutter::Plugin {
   ~DesktopMultiWindowPlugin() override;
 
  private:
+  ScreenManager *screen_manager;
   void HandleMethodCall(
       const flutter::MethodCall<flutter::EncodableValue> &method_call,
       std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result);
 };
+
+HWND screenView;
 
 // static
 void DesktopMultiWindowPlugin::RegisterWithRegistrar(
@@ -40,10 +44,14 @@ void DesktopMultiWindowPlugin::RegisterWithRegistrar(
       [plugin_pointer = plugin.get()](const auto &call, auto result) {
         plugin_pointer->HandleMethodCall(call, std::move(result));
       });
+
   registrar->AddPlugin(std::move(plugin));
+  screenView = registrar->GetView()->GetNativeWindow();
 }
 
-DesktopMultiWindowPlugin::DesktopMultiWindowPlugin() = default;
+DesktopMultiWindowPlugin::DesktopMultiWindowPlugin()  {
+  screen_manager = new ScreenManager();
+}
 
 DesktopMultiWindowPlugin::~DesktopMultiWindowPlugin() = default;
 
@@ -95,6 +103,68 @@ void DesktopMultiWindowPlugin::HandleMethodCall(
   } else if (method_call.method_name() == "getAllSubWindowIds") {
     auto window_ids = MultiWindowManager::Instance()->GetAllSubWindowIds();
     result->Success(flutter::EncodableValue(window_ids));
+    return;
+  } else if ((method_call.method_name().compare("getAttachedScreenList")) == 0) {
+    result->Success(screen_manager->GetAttachedScreenList());
+    return;
+  }  else if ((method_call.method_name().compare("ensureScreenInitialized")) == 0) {
+    screen_manager->native_window =
+            ::GetAncestor(screenView, GA_ROOT);
+    result->Success(flutter::EncodableValue(true));
+    return;
+  } else if ((method_call.method_name().compare("setFullScreen")) == 0) {
+    const flutter::EncodableMap &args =
+            std::get<flutter::EncodableMap>(*method_call.arguments());
+    screen_manager->SetFullScreen(args);
+    result->Success(flutter::EncodableValue(true));
+    return;
+  } else if ((method_call.method_name().compare("getBounds")) == 0) {
+    const flutter::EncodableMap& args =
+            std::get<flutter::EncodableMap>(*method_call.arguments());
+    flutter::EncodableMap value = screen_manager->GetBounds(args);
+    result->Success(flutter::EncodableValue(value));
+    return;
+  } else if ((method_call.method_name().compare("setBounds")) == 0) {
+    const flutter::EncodableMap& args =
+            std::get<flutter::EncodableMap>(*method_call.arguments());
+    screen_manager->SetBounds(args);
+    result->Success(flutter::EncodableValue(true));
+    return;
+  } else if ((method_call.method_name().compare("waitUntilReadyToShow")) == 0) {
+    screen_manager->WaitUntilReadyToShow();
+    result->Success(flutter::EncodableValue(true));
+    return;
+  } else if ((method_call.method_name().compare("setResizable")) == 0) {
+    const flutter::EncodableMap& args =
+            std::get<flutter::EncodableMap>(*method_call.arguments());
+    screen_manager->SetResizable(args);
+    result->Success(flutter::EncodableValue(true));
+    return;
+  } else if ((method_call.method_name().compare("setAlwaysOnTop")) == 0) {
+    const flutter::EncodableMap& args =
+            std::get<flutter::EncodableMap>(*method_call.arguments());
+    screen_manager->SetAlwaysOnTop(args);
+    result->Success(flutter::EncodableValue(true));
+    return;
+  } else if ((method_call.method_name().compare("setSkipTaskbar")) == 0) {
+    const flutter::EncodableMap& args =
+            std::get<flutter::EncodableMap>(*method_call.arguments());
+    screen_manager->SetSkipTaskbar(args);
+    result->Success(flutter::EncodableValue(true));
+    return;
+  } else if ((method_call.method_name().compare("isClosable")) == 0) {
+    bool value = screen_manager->IsClosable();
+    result->Success(flutter::EncodableValue(value));
+    return;
+  } else if ((method_call.method_name().compare("setClosable")) == 0) {
+    const flutter::EncodableMap& args =
+            std::get<flutter::EncodableMap>(*method_call.arguments());
+    screen_manager->SetClosable(args);
+    result->Success(flutter::EncodableValue(true));
+    return;
+  } else if ((method_call.method_name().compare("destroy")) == 0) {
+    screen_manager->Destroy();
+    result->Success(flutter::EncodableValue(true));
     return;
   }
   result->NotImplemented();
